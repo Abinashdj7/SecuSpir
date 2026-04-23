@@ -1,0 +1,24 @@
+# ===== SECRETS =====
+.env
+
+# ===== BACKEND (Spring Boot) =====
+Server/target/
+Server/.mvn/wrapper/maven-wrapper.jar
+Server/*.log
+Server/.DS_Store
+
+# ===== FRONTEND (Angular) =====
+Client/securebank-frontend/node_modules/
+Client/securebank-frontend/dist/
+Client/securebank-frontend/.angular/
+Client/securebank-frontend/*.log
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.class
+
+# ===== OS =====
+.DS_Store
+Thumbs.db

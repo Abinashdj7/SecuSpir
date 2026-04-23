@@ -1,0 +1,129 @@
+<div class="min-h-screen bg-gray-950">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4">
+    <div class="max-w-3xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+          </svg>
+        </div>
+        <span class="text-white font-bold text-lg">SecureBank</span>
+      </div>
+      <button (click)="goBack()"
+        class="text-sm text-gray-400 hover:text-white transition flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Dashboard
+      </button>
+    </div>
+  </nav>
+
+  <div class="max-w-3xl mx-auto px-6 py-8">
+
+    <!-- Account Summary Card -->
+    <div *ngIf="account"
+      class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 mb-8">
+      <p class="text-blue-200 text-sm font-medium mb-1">{{ account.accountType }} Account</p>
+      <p class="text-white text-3xl font-bold mb-1">
+        €{{ account.balance | number:'1.2-2' }}
+      </p>
+      <p class="text-blue-200 text-sm font-mono">{{ account.accountNumber }}</p>
+      <div class="flex items-center gap-2 mt-3">
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+          [ngClass]="account.status === 'ACTIVE'
+            ? 'bg-green-500/30 text-green-300'
+            : 'bg-red-500/30 text-red-300'">
+          {{ account.status }}
+        </span>
+        <button (click)="goToTransfer()"
+          class="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-0.5
+                 rounded-full transition font-medium">
+          + New Transaction
+        </button>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-xl font-bold text-white">Transaction History</h1>
+      <span class="text-gray-400 text-sm">{{ transactions.length }} transaction(s)</span>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="text-center py-12">
+      <div class="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full
+                  animate-spin mx-auto mb-3"></div>
+      <p class="text-gray-400">Loading transactions...</p>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="error"
+      class="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 mb-4">
+      {{ error }}
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && transactions.length === 0"
+      class="text-center py-16 bg-gray-900 border border-gray-800 rounded-2xl">
+      <p class="text-4xl mb-3">📭</p>
+      <p class="text-white font-semibold mb-1">No transactions yet</p>
+      <p class="text-gray-400 text-sm mb-4">Start by making a deposit or transfer</p>
+      <button (click)="goToTransfer()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold
+               px-4 py-2 rounded-lg transition text-sm">
+        Make a Transaction
+      </button>
+    </div>
+
+    <!-- Transactions List -->
+    <div *ngIf="!loading && transactions.length > 0"
+      class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div *ngFor="let tx of transactions; let last = last"
+        class="flex items-center justify-between p-4"
+        [ngClass]="!last ? 'border-b border-gray-800' : ''">
+
+        <!-- Left: icon + info -->
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-lg">
+            {{ getTransactionIcon(tx.type) }}
+          </div>
+          <div>
+            <p class="text-white font-medium">{{ tx.type | titlecase }}</p>
+            <p class="text-gray-400 text-xs mt-0.5">
+              {{ tx.description || 'No description' }}
+            </p>
+            <p class="text-gray-500 text-xs mt-0.5">
+              {{ tx.createdAt | date:'dd MMM yyyy, HH:mm' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: amount + status -->
+        <div class="text-right">
+          <p class="font-bold text-lg" [ngClass]="getAmountColor(tx)">
+            {{ getAmountPrefix(tx) }}€{{ tx.amount | number:'1.2-2' }}
+          </p>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+            [ngClass]="tx.status === 'COMPLETED'
+              ? 'bg-green-500/20 text-green-400'
+              : tx.status === 'PENDING'
+              ? 'bg-yellow-500/20 text-yellow-400'
+              : 'bg-red-500/20 text-red-400'">
+            {{ tx.status }}
+          </span>
+          <!-- Show counterpart account for transfers -->
+          <p *ngIf="tx.type === 'TRANSFER'" class="text-gray-500 text-xs mt-1 font-mono">
+            {{ getAmountPrefix(tx) === '-' ? 'To: ' + tx.receiverAccountNumber :
+               'From: ' + tx.senderAccountNumber }}
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
