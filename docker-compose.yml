@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
 
-  # MySQL Database
   mysql:
     image: mysql:8.0
     container_name: securebank-mysql
@@ -10,7 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: securebank
     ports:
-      - "3307:3306"  # 3307 on host to avoid conflict with local MySQL
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -18,12 +17,11 @@ services:
       timeout: 20s
       retries: 10
 
-  # Spring Boot Backend
   backend:
     build:
       context: ./Server
       dockerfile: Dockerfile
-    container_name: securebank-backend
+    container_name: securebank-server
     ports:
       - "8080:8080"
     environment:
@@ -37,14 +35,13 @@ services:
       mysql:
         condition: service_healthy
 
-  # Angular Frontend
   frontend:
     build:
       context: ./Client/securebank-frontend
       dockerfile: Dockerfile
     container_name: securebank-frontend
     ports:
-      - "4200:80"
+      - "4600:80"
     depends_on:
       - backend
 

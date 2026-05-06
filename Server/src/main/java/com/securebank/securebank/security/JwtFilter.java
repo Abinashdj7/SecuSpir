@@ -52,13 +52,11 @@ public class JwtFilter extends OncePerRequestFilter {
                 }
             }
         } catch (UsernameNotFoundException e) {
-            // User was deleted but token still exists — return 401
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"error\": \"User no longer exists\"}");
             return;
         } catch (Exception e) {
-            // Invalid or expired token — return 401
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"error\": \"Invalid or expired token\"}");

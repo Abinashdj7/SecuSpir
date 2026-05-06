@@ -29,7 +29,7 @@ public class User {
     private String email;
 
     @Column(nullable = false)
-    private String password; // BCrypt hashed
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -39,7 +39,7 @@ public class User {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    @JsonIgnore  // ← on the field, not the class
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Account> accounts;
 

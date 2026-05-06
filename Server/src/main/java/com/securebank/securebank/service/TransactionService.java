@@ -24,7 +24,6 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
 
-    // Get the currently logged-in user
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
@@ -32,7 +31,6 @@ public class TransactionService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // Verify the account belongs to the logged-in user
     private Account getOwnedAccount(Long accountId) {
         User user = getCurrentUser();
         Account account = accountRepository.findById(accountId)
@@ -47,7 +45,6 @@ public class TransactionService {
         return account;
     }
 
-    // 💰 DEPOSIT
     @Transactional
     public TransactionResponse deposit(Long accountId, DepositRequest request) {
         Account account = getOwnedAccount(accountId);
@@ -66,12 +63,10 @@ public class TransactionService {
         return TransactionResponse.fromEntity(transactionRepository.save(transaction));
     }
 
-    // 💸 WITHDRAW
     @Transactional
     public TransactionResponse withdraw(Long accountId, WithdrawRequest request) {
         Account account = getOwnedAccount(accountId);
 
-        // Check sufficient balance
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
             throw new RuntimeException("Insufficient balance");
         }
@@ -90,12 +85,10 @@ public class TransactionService {
         return TransactionResponse.fromEntity(transactionRepository.save(transaction));
     }
 
-    // 🔁 TRANSFER
     @Transactional
     public TransactionResponse transfer(Long senderAccountId, TransferRequest request) {
         Account sender = getOwnedAccount(senderAccountId);
 
-        // Find receiver by account number
         Account receiver = accountRepository
                 .findByAccountNumber(request.getReceiverAccountNumber())
                 .orElseThrow(() -> new RuntimeException("Receiver account not found"));
@@ -104,17 +97,14 @@ public class TransactionService {
             throw new RuntimeException("Receiver account is not active");
         }
 
-        // Can't transfer to yourself
         if (sender.getAccountNumber().equals(receiver.getAccountNumber())) {
             throw new RuntimeException("Cannot transfer to the same account");
         }
 
-        // Check sufficient balance
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new RuntimeException("Insufficient balance");
         }
 
-        // Debit sender, credit receiver
         sender.setBalance(sender.getBalance().subtract(request.getAmount()));
         receiver.setBalance(receiver.getBalance().add(request.getAmount()));
 
@@ -133,10 +123,9 @@ public class TransactionService {
         return TransactionResponse.fromEntity(transactionRepository.save(transaction));
     }
 
-    // 📋 TRANSACTION HISTORY
     @Transactional(readOnly = true)
     public List<TransactionResponse> getHistory(Long accountId) {
-        getOwnedAccount(accountId); // security check
+        getOwnedAccount(accountId);
         return transactionRepository.findAllByAccountId(accountId)
                 .stream()
                 .map(TransactionResponse::fromEntity)

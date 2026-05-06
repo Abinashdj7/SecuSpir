@@ -22,7 +22,6 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
 
-    // Get the currently authenticated user
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
@@ -30,20 +29,14 @@ public class AccountService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // Get all accounts belonging to the logged-in user
     public List<AccountResponse> getMyAccounts() {
         User user = getCurrentUser();
-        System.out.println("🔍 Getting accounts for user: " + user.getEmail() + " (ID: " + user.getId() + ")");
-
         List<Account> accounts = accountRepository.findByUserId(user.getId());
-        System.out.println("📊 Found " + accounts.size() + " accounts for user");
-
         return accounts.stream()
                 .map(AccountResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    // Get a single account by ID (only if it belongs to the logged-in user)
     public AccountResponse getAccountById(Long accountId) {
         User user = getCurrentUser();
         Account account = accountRepository.findById(accountId)
@@ -56,7 +49,6 @@ public class AccountService {
         return AccountResponse.fromEntity(account);
     }
 
-    // Open a new account for the logged-in user
     public AccountResponse createAccount(CreateAccountRequest request) {
         User user = getCurrentUser();
 
@@ -72,7 +64,6 @@ public class AccountService {
         return AccountResponse.fromEntity(account);
     }
 
-    // Freeze an account (admin or owner action)
     public AccountResponse freezeAccount(Long accountId) {
         User user = getCurrentUser();
         Account account = accountRepository.findById(accountId)

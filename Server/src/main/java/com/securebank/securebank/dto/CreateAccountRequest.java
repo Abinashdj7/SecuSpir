@@ -8,5 +8,5 @@ import lombok.Data;
 public class CreateAccountRequest {
 
     @NotNull(message = "Account type is required")
-    private Account.AccountType accountType; // CHECKING or SAVINGS
+    private Account.AccountType accountType;
 }

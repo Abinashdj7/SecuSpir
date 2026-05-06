@@ -19,7 +19,6 @@ public class AccountResponse {
     private Account.AccountStatus status;
     private LocalDateTime createdAt;
 
-    // Static factory method — converts Account entity to DTO
     public static AccountResponse fromEntity(Account account) {
         return AccountResponse.builder()
                 .id(account.getId())

@@ -22,12 +22,12 @@ public class Transaction {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_account_id")
-    private Account senderAccount; // null for DEPOSIT
+    private Account senderAccount;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_account_id")
-    private Account receiverAccount; // null for WITHDRAWAL
+    private Account receiverAccount;
 
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;

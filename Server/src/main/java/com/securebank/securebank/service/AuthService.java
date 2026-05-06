@@ -31,13 +31,10 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
 
     public AuthResponse register(RegisterRequest request) {
-
-        // Check if email already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already in use");
         }
 
-        // Create and save the user
         User user = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -48,7 +45,6 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Automatically create a default CHECKING account for the new user
         Account account = Account.builder()
                 .user(user)
                 .accountNumber(generateAccountNumber())
@@ -59,7 +55,6 @@ public class AuthService {
 
         accountRepository.save(account);
 
-        // Generate and return the JWT token
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
 
@@ -67,8 +62,6 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-
-        // Authenticate — throws exception if credentials are wrong
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -76,7 +69,6 @@ public class AuthService {
                 )
         );
 
-        // Load user and generate token
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
         String token = jwtUtil.generateToken(userDetails);
@@ -84,7 +76,6 @@ public class AuthService {
         return new AuthResponse(token, user.getEmail(), user.getRole().name());
     }
 
-    // Generates a unique 16-digit account number
     private String generateAccountNumber() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
