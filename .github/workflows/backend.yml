@@ -27,6 +27,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+        working-directory: Server
+
       - name: Run unit tests
         run: ./mvnw test
         working-directory: Server
