@@ -1,7 +1,7 @@
 # 🏦 SecureBank
 
-![Backend CI](https://github.com/AbinashSasikumar/securebank/actions/workflows/backend.yml/badge.svg)
-![Frontend CI](https://github.com/AbinashSasikumar/securebank/actions/workflows/frontend.yml/badge.svg)
+![Backend CI](https://github.com/Abinashdj7/SecuSpir/actions/workflows/backend.yml/badge.svg)
+![Frontend CI](https://github.com/Abinashdj7/SecuSpir/actions/workflows/frontend.yml/badge.svg)
 
 A full-stack digital banking application built with **Angular (frontend)** and **Spring Boot (backend)**. SecureBank provides account management, authentication, and transaction handling in a modern client-server architecture.
 
