@@ -245,6 +245,39 @@ com/securebank/
 
 ---
 
+## ⚙️ GitHub Actions (CI)
+
+Two path-filtered workflows run on every push or pull request to `main`.
+
+### Backend CI ([`.github/workflows/backend.yml`](.github/workflows/backend.yml))
+
+Triggers when files under `Server/` change.
+
+| Step | Detail |
+|------|--------|
+| Checkout | `actions/checkout@v4` |
+| Java setup | Java 21 (Temurin) with Maven cache |
+| Fix permissions | `chmod +x mvnw` |
+| Unit tests | `./mvnw test` |
+| Build JAR | `./mvnw package -DskipTests` |
+| Upload artifact | `securebank-backend` (7-day retention) |
+
+### Frontend CI ([`.github/workflows/frontend.yml`](.github/workflows/frontend.yml))
+
+Triggers when files under `Client/` change.
+
+| Step | Detail |
+|------|--------|
+| Checkout | `actions/checkout@v4` |
+| Node.js setup | Node 20 with npm cache |
+| Install deps | `npm ci` |
+| Build | `npm run build` |
+| Upload artifact | `securebank-frontend` (7-day retention) |
+
+> Neither workflow includes deployment steps — they stop at build/test.
+
+---
+
 ## 🔮 Future Improvements
 
 * Full RBAC (Admin/User)
