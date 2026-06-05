@@ -12,7 +12,7 @@
         </div>
         <span class="text-white font-bold text-lg">SecureBank</span>
       </div>
-      <button (click)="goBack()"
+      <button data-cy="back-btn" (click)="goBack()"
         class="text-sm text-gray-400 hover:text-white transition flex items-center gap-1">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -25,7 +25,7 @@
   <div class="max-w-3xl mx-auto px-6 py-8">
 
     <!-- Account Summary Card -->
-    <div *ngIf="account"
+    <div *ngIf="account" data-cy="account-summary"
       class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 mb-8">
       <p class="text-blue-200 text-sm font-medium mb-1">{{ account.accountType }} Account</p>
       <p class="text-white text-3xl font-bold mb-1">
@@ -67,7 +67,7 @@
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!loading && transactions.length === 0"
+    <div *ngIf="!loading && transactions.length === 0" data-cy="empty-state"
       class="text-center py-16 bg-gray-900 border border-gray-800 rounded-2xl">
       <p class="text-4xl mb-3">📭</p>
       <p class="text-white font-semibold mb-1">No transactions yet</p>
@@ -83,6 +83,7 @@
     <div *ngIf="!loading && transactions.length > 0"
       class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
       <div *ngFor="let tx of transactions; let last = last"
+        data-cy="transaction-item"
         class="flex items-center justify-between p-4"
         [ngClass]="!last ? 'border-b border-gray-800' : ''">
 

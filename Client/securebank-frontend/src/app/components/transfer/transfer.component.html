@@ -40,21 +40,21 @@
 
       <!-- Tabs -->
       <div class="flex bg-gray-900 border border-gray-800 rounded-xl p-1 mb-6">
-        <button (click)="setTab('deposit')"
+        <button data-cy="deposit-tab" (click)="setTab('deposit')"
           class="flex-1 py-2 text-sm font-medium rounded-lg transition"
           [ngClass]="activeTab === 'deposit'
             ? 'bg-blue-600 text-white'
             : 'text-gray-400 hover:text-white'">
           💰 Deposit
         </button>
-        <button (click)="setTab('withdraw')"
+        <button data-cy="withdraw-tab" (click)="setTab('withdraw')"
           class="flex-1 py-2 text-sm font-medium rounded-lg transition"
           [ngClass]="activeTab === 'withdraw'
             ? 'bg-blue-600 text-white'
             : 'text-gray-400 hover:text-white'">
           💸 Withdraw
         </button>
-        <button (click)="setTab('transfer')"
+        <button data-cy="transfer-tab" (click)="setTab('transfer')"
           class="flex-1 py-2 text-sm font-medium rounded-lg transition"
           [ngClass]="activeTab === 'transfer'
             ? 'bg-blue-600 text-white'
@@ -64,14 +64,14 @@
       </div>
 
       <!-- Success -->
-      <div *ngIf="success"
+      <div *ngIf="success" data-cy="success-message"
         class="bg-green-500/10 border border-green-500/30 text-green-400
                text-sm rounded-xl px-4 py-3 mb-4">
         ✅ {{ success }}
       </div>
 
       <!-- Error -->
-      <div *ngIf="error"
+      <div *ngIf="error" data-cy="error-message"
         class="bg-red-500/10 border border-red-500/30 text-red-400
                text-sm rounded-xl px-4 py-3 mb-4">
         ❌ {{ error }}
@@ -85,7 +85,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Account</label>
-            <select formControlName="accountId"
+            <select data-cy="deposit-account-select" formControlName="accountId"
               class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg
                      px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <option value="">Select an account</option>
@@ -97,7 +97,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Amount (€)</label>
-            <input formControlName="amount" type="number" min="0.01" step="0.01" placeholder="0.00"
+            <input data-cy="deposit-amount-input" formControlName="amount" type="number" min="0.01" step="0.01" placeholder="0.00"
               class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
@@ -111,7 +111,7 @@
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
 
-          <button type="submit" [disabled]="submitting || depositForm.invalid"
+          <button data-cy="deposit-submit" type="submit" [disabled]="submitting || depositForm.invalid"
             class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50
                    disabled:cursor-not-allowed text-white font-semibold py-2.5
                    rounded-lg transition">
@@ -128,7 +128,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Account</label>
-            <select formControlName="accountId"
+            <select data-cy="withdraw-account-select" formControlName="accountId"
               class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg
                      px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <option value="">Select an account</option>
@@ -140,7 +140,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Amount (€)</label>
-            <input formControlName="amount" type="number" min="0.01" step="0.01" placeholder="0.00"
+            <input data-cy="withdraw-amount-input" formControlName="amount" type="number" min="0.01" step="0.01" placeholder="0.00"
               class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
@@ -154,7 +154,7 @@
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
 
-          <button type="submit" [disabled]="submitting || withdrawForm.invalid"
+          <button data-cy="withdraw-submit" type="submit" [disabled]="submitting || withdrawForm.invalid"
             class="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50
                    disabled:cursor-not-allowed text-white font-semibold py-2.5
                    rounded-lg transition">
@@ -171,7 +171,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">From Account</label>
-            <select formControlName="accountId"
+            <select data-cy="transfer-account-select" formControlName="accountId"
               class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg
                      px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <option value="">Select an account</option>
@@ -185,7 +185,7 @@
             <label class="block text-sm font-medium text-gray-300 mb-1.5">
               Receiver Account Number
             </label>
-            <input formControlName="receiverAccountNumber" type="text"
+            <input data-cy="transfer-receiver-input" formControlName="receiverAccountNumber" type="text"
               placeholder="e.g. A1B2C3D4E5F6G7H8"
               class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -194,7 +194,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Amount (€)</label>
-            <input formControlName="amount" type="number" min="0.01" step="0.01" placeholder="0.00"
+            <input data-cy="transfer-amount-input" formControlName="amount" type="number" min="0.01" step="0.01" placeholder="0.00"
               class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
@@ -208,7 +208,7 @@
                      rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
 
-          <button type="submit" [disabled]="submitting || transferForm.invalid"
+          <button data-cy="transfer-submit" type="submit" [disabled]="submitting || transferForm.invalid"
             class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50
                    disabled:cursor-not-allowed text-white font-semibold py-2.5
                    rounded-lg transition">

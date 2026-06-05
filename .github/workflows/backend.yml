@@ -34,10 +34,16 @@ jobs:
       - name: Run unit tests
         run: ./mvnw test
         working-directory: Server
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
 
       - name: Build JAR
         run: ./mvnw package -DskipTests
         working-directory: Server
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4

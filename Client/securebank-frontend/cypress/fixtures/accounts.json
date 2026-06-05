@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "accountNumber": "ABCDEF1234567890",
+    "accountType": "CHECKING",
+    "balance": 1500.00,
+    "status": "ACTIVE"
+  },
+  {
+    "id": 2,
+    "accountNumber": "1234567890ABCDEF",
+    "accountType": "SAVINGS",
+    "balance": 3250.75,
+    "status": "ACTIVE"
+  }
+]

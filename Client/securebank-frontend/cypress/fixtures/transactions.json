@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "type": "DEPOSIT",
+    "amount": 500.00,
+    "description": "Salary",
+    "status": "COMPLETED",
+    "createdAt": "2024-01-15T10:30:00",
+    "receiverAccountNumber": "ABCDEF1234567890",
+    "senderAccountNumber": null
+  },
+  {
+    "id": 2,
+    "type": "WITHDRAWAL",
+    "amount": 100.00,
+    "description": "ATM",
+    "status": "COMPLETED",
+    "createdAt": "2024-01-16T14:00:00",
+    "receiverAccountNumber": null,
+    "senderAccountNumber": "ABCDEF1234567890"
+  },
+  {
+    "id": 3,
+    "type": "TRANSFER",
+    "amount": 200.00,
+    "description": "Rent",
+    "status": "COMPLETED",
+    "createdAt": "2024-01-17T09:00:00",
+    "senderAccountNumber": "ABCDEF1234567890",
+    "receiverAccountNumber": "1234567890ABCDEF"
+  }
+]

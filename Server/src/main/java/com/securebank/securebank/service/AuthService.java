@@ -3,36 +3,40 @@ package com.securebank.securebank.service;
 import com.securebank.securebank.dto.AuthResponse;
 import com.securebank.securebank.dto.LoginRequest;
 import com.securebank.securebank.dto.RegisterRequest;
-import com.securebank.securebank.model.Account;
 import com.securebank.securebank.model.User;
-import com.securebank.securebank.repo.AccountRepository;
 import com.securebank.securebank.repo.UserRepository;
 import com.securebank.securebank.security.JwtUtil;
+import com.securebank.securebank.security.LoginAttemptService;
+import com.securebank.securebank.util.RequestUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.util.UUID;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
+    private final AccountService accountService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already in use");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Registration could not be completed");
         }
 
         User user = User.builder()
@@ -44,16 +48,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-
-        Account account = Account.builder()
-                .user(user)
-                .accountNumber(generateAccountNumber())
-                .accountType(Account.AccountType.CHECKING)
-                .balance(BigDecimal.ZERO)
-                .status(Account.AccountStatus.ACTIVE)
-                .build();
-
-        accountRepository.save(account);
+        accountService.createDefaultAccount(user);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
@@ -62,12 +57,23 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        String clientIp = getClientIp();
+
+        if (loginAttemptService.isBlocked(clientIp)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many failed login attempts. Try again in 15 minutes.");
+        }
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(), request.getPassword()));
+        } catch (BadCredentialsException e) {
+            loginAttemptService.loginFailed(clientIp);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+
+        loginAttemptService.loginSucceeded(clientIp);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
@@ -76,7 +82,8 @@ public class AuthService {
         return new AuthResponse(token, user.getEmail(), user.getRole().name());
     }
 
-    private String generateAccountNumber() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+    private String getClientIp() {
+        var attrs = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+        return RequestUtils.getClientIp(attrs.getRequest());
     }
 }

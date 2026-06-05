@@ -2,11 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
-  private apiUrl = 'http://localhost:8080/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
 
   constructor(private http: HttpClient, private router: Router) { }
 
@@ -28,13 +29,24 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (Date.now() >= payload.exp * 1000) {
+        localStorage.removeItem('token');
+        return false;
+      }
+      return true;
+    } catch {
+      localStorage.removeItem('token');
+      return false;
+    }
   }
 
   getCurrentUserEmail(): string {
     const token = localStorage.getItem('token');
     if (!token) return '';
-
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return payload.sub || payload.email || '';

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, NgZone, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -18,7 +18,9 @@ export class RegisterComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef
   ) {
     this.form = this.fb.group({
       firstName: ['', Validators.required],
@@ -34,10 +36,15 @@ export class RegisterComponent {
     this.error = '';
 
     this.authService.register(this.form.value).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => {
+        this.ngZone.run(() => this.router.navigate(['/dashboard']));
+      },
       error: (err) => {
-        this.error = err.error?.error || 'Registration failed';
-        this.loading = false;
+        this.ngZone.run(() => {
+          this.error = err.error?.error || 'Registration failed';
+          this.loading = false;
+          this.cdr.detectChanges();
+        });
       }
     });
   }

@@ -35,7 +35,7 @@ class AuthControllerTest {
         request.setFirstName("Jane");
         request.setLastName("Doe");
         request.setEmail("jane@example.com");
-        request.setPassword("password123");
+        request.setPassword("Test1234!");
 
         AuthResponse response = new AuthResponse("token-abc", "jane@example.com", "ROLE_USER");
         when(authService.register(any(RegisterRequest.class))).thenReturn(response);

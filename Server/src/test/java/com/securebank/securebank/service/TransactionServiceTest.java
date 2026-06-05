@@ -9,17 +9,12 @@ import com.securebank.securebank.model.Transaction;
 import com.securebank.securebank.model.User;
 import com.securebank.securebank.repo.AccountRepository;
 import com.securebank.securebank.repo.TransactionRepository;
-import com.securebank.securebank.repo.UserRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -35,7 +30,7 @@ class TransactionServiceTest {
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private AccountRepository accountRepository;
-    @Mock private UserRepository userRepository;
+    @Mock private AccountService accountService;
 
     @InjectMocks private TransactionService transactionService;
 
@@ -54,16 +49,7 @@ class TransactionServiceTest {
                 .status(Account.AccountStatus.ACTIVE)
                 .build();
 
-        Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("user@example.com");
-        SecurityContext ctx = mock(SecurityContext.class);
-        when(ctx.getAuthentication()).thenReturn(auth);
-        SecurityContextHolder.setContext(ctx);
-    }
-
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
+        when(accountService.getOwnedAccountById(1L)).thenReturn(senderAccount);
     }
 
     @Test
@@ -72,15 +58,12 @@ class TransactionServiceTest {
         request.setAmount(BigDecimal.valueOf(500));
         request.setDescription("Salary");
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(accountRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any())).thenAnswer(inv -> {
             Transaction t = inv.getArgument(0);
-            t = Transaction.builder()
+            return Transaction.builder()
                     .id(1L).receiverAccount(t.getReceiverAccount()).amount(t.getAmount())
                     .type(t.getType()).status(t.getStatus()).description(t.getDescription()).build();
-            return t;
         });
 
         TransactionResponse result = transactionService.deposit(1L, request);
@@ -96,15 +79,12 @@ class TransactionServiceTest {
         request.setAmount(BigDecimal.valueOf(300));
         request.setDescription("ATM");
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(accountRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any())).thenAnswer(inv -> {
             Transaction t = inv.getArgument(0);
-            t = Transaction.builder()
+            return Transaction.builder()
                     .id(1L).senderAccount(t.getSenderAccount()).amount(t.getAmount())
                     .type(t.getType()).status(t.getStatus()).description(t.getDescription()).build();
-            return t;
         });
 
         TransactionResponse result = transactionService.withdraw(1L, request);
@@ -118,12 +98,9 @@ class TransactionServiceTest {
         WithdrawRequest request = new WithdrawRequest();
         request.setAmount(BigDecimal.valueOf(9999));
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
-
         assertThatThrownBy(() -> transactionService.withdraw(1L, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Insufficient balance");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Insufficient balance");
     }
 
     @Test
@@ -142,16 +119,13 @@ class TransactionServiceTest {
         request.setAmount(BigDecimal.valueOf(400));
         request.setDescription("Rent");
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(accountRepository.findByAccountNumber("RECV0000000000AB")).thenReturn(Optional.of(receiver));
         when(accountRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any())).thenAnswer(inv -> {
             Transaction t = inv.getArgument(0);
-            t = Transaction.builder()
+            return Transaction.builder()
                     .id(1L).senderAccount(t.getSenderAccount()).receiverAccount(t.getReceiverAccount())
                     .amount(t.getAmount()).type(t.getType()).status(t.getStatus()).build();
-            return t;
         });
 
         TransactionResponse result = transactionService.transfer(1L, request);
@@ -175,13 +149,11 @@ class TransactionServiceTest {
         request.setReceiverAccountNumber("RECV0000000000AB");
         request.setAmount(BigDecimal.valueOf(9999));
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(accountRepository.findByAccountNumber("RECV0000000000AB")).thenReturn(Optional.of(receiver));
 
         assertThatThrownBy(() -> transactionService.transfer(1L, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Insufficient balance");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Insufficient balance");
     }
 
     @Test
@@ -190,13 +162,11 @@ class TransactionServiceTest {
         request.setReceiverAccountNumber("SENDER1234567890");
         request.setAmount(BigDecimal.valueOf(100));
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(accountRepository.findByAccountNumber("SENDER1234567890")).thenReturn(Optional.of(senderAccount));
 
         assertThatThrownBy(() -> transactionService.transfer(1L, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Cannot transfer to the same account");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Cannot transfer to the same account");
     }
 
     @Test
@@ -213,13 +183,11 @@ class TransactionServiceTest {
         request.setReceiverAccountNumber("RECV0000000000AB");
         request.setAmount(BigDecimal.valueOf(100));
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(accountRepository.findByAccountNumber("RECV0000000000AB")).thenReturn(Optional.of(frozenReceiver));
 
         assertThatThrownBy(() -> transactionService.transfer(1L, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Receiver account is not active");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Receiver account is not active");
     }
 
     @Test
@@ -232,8 +200,6 @@ class TransactionServiceTest {
                 .status(Transaction.TransactionStatus.COMPLETED)
                 .build();
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(senderAccount));
         when(transactionRepository.findAllByAccountId(1L)).thenReturn(List.of(t));
 
         List<TransactionResponse> result = transactionService.getHistory(1L);

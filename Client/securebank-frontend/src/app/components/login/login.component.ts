@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, NgZone, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -18,11 +18,13 @@ export class LoginComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef
   ) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required] // ← no minLength here
+      password: ['', Validators.required]
     });
   }
 
@@ -31,18 +33,19 @@ export class LoginComponent {
     this.loading = true;
     this.error = '';
 
-    console.log('Submitting:', this.form.value); // ← add this to debug
-
     this.authService.login(this.form.value).subscribe({
-      next: (res) => {
-        console.log('Login success:', res); // ← and this
-        this.loading = false;
-        this.router.navigate(['/dashboard']);
+      next: () => {
+        this.ngZone.run(() => {
+          this.loading = false;
+          this.router.navigate(['/dashboard']);
+        });
       },
       error: (err) => {
-        console.log('Login error:', err); // ← and this
-        this.error = err.error?.error || 'Invalid email or password';
-        this.loading = false;
+        this.ngZone.run(() => {
+          this.error = err.error?.error || 'Invalid email or password';
+          this.loading = false;
+          this.cdr.detectChanges();
+        });
       }
     });
   }

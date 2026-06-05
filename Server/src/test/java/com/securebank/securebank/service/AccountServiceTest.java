@@ -5,17 +5,12 @@ import com.securebank.securebank.dto.CreateAccountRequest;
 import com.securebank.securebank.model.Account;
 import com.securebank.securebank.model.User;
 import com.securebank.securebank.repo.AccountRepository;
-import com.securebank.securebank.repo.UserRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -30,7 +25,7 @@ import static org.mockito.Mockito.*;
 class AccountServiceTest {
 
     @Mock private AccountRepository accountRepository;
-    @Mock private UserRepository userRepository;
+    @Mock private CurrentUserService currentUserService;
 
     @InjectMocks private AccountService accountService;
 
@@ -49,21 +44,11 @@ class AccountServiceTest {
                 .status(Account.AccountStatus.ACTIVE)
                 .build();
 
-        Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("user@example.com");
-        SecurityContext ctx = mock(SecurityContext.class);
-        when(ctx.getAuthentication()).thenReturn(auth);
-        SecurityContextHolder.setContext(ctx);
-    }
-
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
+        when(currentUserService.getCurrentUser()).thenReturn(testUser);
     }
 
     @Test
     void getMyAccounts_returnsAccountsForCurrentUser() {
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.findByUserId(1L)).thenReturn(List.of(testAccount));
 
         List<AccountResponse> result = accountService.getMyAccounts();
@@ -75,7 +60,6 @@ class AccountServiceTest {
 
     @Test
     void getAccountById_success() {
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.findById(1L)).thenReturn(Optional.of(testAccount));
 
         AccountResponse result = accountService.getAccountById(1L);
@@ -86,12 +70,11 @@ class AccountServiceTest {
 
     @Test
     void getAccountById_notFound_throwsException() {
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> accountService.getAccountById(99L))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Account not found");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Account not found");
     }
 
     @Test
@@ -106,12 +89,11 @@ class AccountServiceTest {
                 .status(Account.AccountStatus.ACTIVE)
                 .build();
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.findById(5L)).thenReturn(Optional.of(otherAccount));
 
         assertThatThrownBy(() -> accountService.getAccountById(5L))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Access denied to this account");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Access denied");
     }
 
     @Test
@@ -119,7 +101,6 @@ class AccountServiceTest {
         CreateAccountRequest request = new CreateAccountRequest();
         request.setAccountType(Account.AccountType.SAVINGS);
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AccountResponse result = accountService.createAccount(request);
@@ -131,7 +112,6 @@ class AccountServiceTest {
 
     @Test
     void freezeAccount_success() {
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.findById(1L)).thenReturn(Optional.of(testAccount));
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -152,11 +132,10 @@ class AccountServiceTest {
                 .status(Account.AccountStatus.ACTIVE)
                 .build();
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(accountRepository.findById(1L)).thenReturn(Optional.of(otherAccount));
 
         assertThatThrownBy(() -> accountService.freezeAccount(1L))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Access denied to this account");
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Access denied");
     }
 }

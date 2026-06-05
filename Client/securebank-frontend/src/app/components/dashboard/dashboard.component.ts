@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -8,8 +8,7 @@ import { AccountService } from '../../services/account.service';
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './dashboard.component.html',
-  changeDetection: ChangeDetectionStrategy.Default
+  templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
   accounts: any[] = [];
@@ -41,7 +40,7 @@ export class DashboardComponent implements OnInit {
           this.cdr.detectChanges(); // ← immediately apply changes
         });
       },
-      error: (err) => {
+      error: () => {
         this.ngZone.run(() => {
           this.error = 'Failed to load accounts';
           this.loading = false;
@@ -84,9 +83,6 @@ export class DashboardComponent implements OnInit {
   }
 
   getEmail(): string {
-    const token = localStorage.getItem('token');
-    if (!token) return '';
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.sub;
+    return this.authService.getCurrentUserEmail();
   }
 }

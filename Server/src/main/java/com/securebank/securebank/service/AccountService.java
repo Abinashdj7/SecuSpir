@@ -5,10 +5,10 @@ import com.securebank.securebank.dto.CreateAccountRequest;
 import com.securebank.securebank.model.Account;
 import com.securebank.securebank.model.User;
 import com.securebank.securebank.repo.AccountRepository;
-import com.securebank.securebank.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,62 +20,59 @@ import java.util.stream.Collectors;
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
-
-    private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
+    private final CurrentUserService currentUserService;
 
     public List<AccountResponse> getMyAccounts() {
-        User user = getCurrentUser();
-        List<Account> accounts = accountRepository.findByUserId(user.getId());
-        return accounts.stream()
+        User user = currentUserService.getCurrentUser();
+        return accountRepository.findByUserId(user.getId())
+                .stream()
                 .map(AccountResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     public AccountResponse getAccountById(Long accountId) {
-        User user = getCurrentUser();
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-
-        if (!account.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Access denied to this account");
-        }
-
-        return AccountResponse.fromEntity(account);
+        return AccountResponse.fromEntity(getOwnedAccountById(accountId));
     }
 
     public AccountResponse createAccount(CreateAccountRequest request) {
-        User user = getCurrentUser();
-
-        Account account = Account.builder()
-                .user(user)
-                .accountNumber(generateAccountNumber())
-                .accountType(request.getAccountType())
-                .balance(BigDecimal.ZERO)
-                .status(Account.AccountStatus.ACTIVE)
-                .build();
-
+        User user = currentUserService.getCurrentUser();
+        Account account = buildAccount(user, request.getAccountType());
         accountRepository.save(account);
         return AccountResponse.fromEntity(account);
     }
 
+    public Account createDefaultAccount(User user) {
+        Account account = buildAccount(user, Account.AccountType.CHECKING);
+        return accountRepository.save(account);
+    }
+
     public AccountResponse freezeAccount(Long accountId) {
-        User user = getCurrentUser();
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-
-        if (!account.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Access denied to this account");
-        }
-
+        Account account = getOwnedAccountById(accountId);
         account.setStatus(Account.AccountStatus.FROZEN);
         accountRepository.save(account);
         return AccountResponse.fromEntity(account);
+    }
+
+    // Shared ownership guard used by both this service and TransactionService
+    public Account getOwnedAccountById(Long accountId) {
+        User user = currentUserService.getCurrentUser();
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Account not found"));
+        if (!account.getUser().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        return account;
+    }
+
+    private Account buildAccount(User user, Account.AccountType type) {
+        return Account.builder()
+                .user(user)
+                .accountNumber(generateAccountNumber())
+                .accountType(type)
+                .balance(BigDecimal.ZERO)
+                .status(Account.AccountStatus.ACTIVE)
+                .build();
     }
 
     private String generateAccountNumber() {

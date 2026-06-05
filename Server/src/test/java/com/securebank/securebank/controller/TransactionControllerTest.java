@@ -97,7 +97,7 @@ class TransactionControllerTest {
     @WithMockUser
     void transfer_returnsOk() throws Exception {
         TransferRequest request = new TransferRequest();
-        request.setReceiverAccountNumber("RECV0000000000AB");
+        request.setReceiverAccountNumber("ABCD1234EFAB5678");
         request.setAmount(BigDecimal.valueOf(300));
         request.setDescription("Rent");
 
