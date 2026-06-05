@@ -12,6 +12,34 @@ on:
       - 'Client/**'
 
 jobs:
+
+  # ── Unit tests (Vitest) ─────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: Client/securebank-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: Client/securebank-frontend
+
+      - name: Run unit tests
+        run: npm test
+        working-directory: Client/securebank-frontend
+        env:
+          CI: true
+
+  # ── Production build ────────────────────────────────────────────────────────
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -42,10 +70,11 @@ jobs:
           path: Client/securebank-frontend/dist/
           retention-days: 7
 
+  # ── Cypress e2e tests (only after unit tests and build both pass) ────────────
   e2e:
-    name: Cypress E2E
+    name: E2E Tests (Cypress)
     runs-on: ubuntu-latest
-    needs: build
+    needs: [unit-tests, build]
 
     steps:
       - name: Checkout code
