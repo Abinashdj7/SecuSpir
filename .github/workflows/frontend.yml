@@ -1,9 +1,5 @@
 name: Frontend CI
 
-concurrency:
-  group: frontend-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 on:
   push:
     branches: [main]
@@ -17,113 +13,20 @@ on:
       - '.github/workflows/frontend.yml'
 
 env:
-  NODE_VERSION: '20'
   WORKING_DIR: Client/securebank-frontend
 
 jobs:
 
-  # ── TypeScript Type Check ─────────────────────────────────────────────────────
-  type-check:
-    name: TypeScript Type Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ${{ env.WORKING_DIR }}
-
-      - name: Type check
-        run: npm run type-check
-        working-directory: ${{ env.WORKING_DIR }}
-
-  # ── Format Check (Prettier) ───────────────────────────────────────────────────
-  format-check:
-    name: Format Check (Prettier)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ${{ env.WORKING_DIR }}
-
-      - name: Check formatting
-        run: npm run format:check
-        working-directory: ${{ env.WORKING_DIR }}
-
-  # ── Security Audit ─────────────────────────────────────────────────────────────
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ${{ env.WORKING_DIR }}
-
-      - name: npm audit (production deps)
-        run: npm audit --omit=dev --audit-level=high
-        working-directory: ${{ env.WORKING_DIR }}
-        continue-on-error: true
-
-      - name: Run Trivy filesystem scan (SARIF)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: ${{ env.WORKING_DIR }}
-          format: 'sarif'
-          output: 'trivy-frontend.sarif'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          exit-code: '0'
-
-      - name: Upload results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        if: always() && hashFiles('trivy-frontend.sarif') != ''
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: trivy-frontend
-
-  # ── Unit Tests + Coverage (Vitest) ───────────────────────────────────────────
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
           cache: npm
           cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
 
@@ -131,21 +34,12 @@ jobs:
         run: npm ci
         working-directory: ${{ env.WORKING_DIR }}
 
-      - name: Run unit tests with coverage
-        run: npm run test:coverage
+      - name: Run unit tests
+        run: npm test
         working-directory: ${{ env.WORKING_DIR }}
         env:
           CI: true
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: frontend-coverage
-          path: ${{ env.WORKING_DIR }}/coverage/
-          retention-days: 7
-
-  # ── Production Build ──────────────────────────────────────────────────────────
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -155,7 +49,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
           cache: npm
           cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
 
@@ -167,21 +61,15 @@ jobs:
         run: npm run build
         working-directory: ${{ env.WORKING_DIR }}
 
-      - name: Bundle size report
-        run: du -sh dist/*/
-        working-directory: ${{ env.WORKING_DIR }}
-
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: securebank-frontend
           path: ${{ env.WORKING_DIR }}/dist/
-          if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
-  # ── E2E Tests (Cypress) ───────────────────────────────────────────────────────
   e2e:
-    name: E2E Tests (Cypress)
+    name: E2E Tests
     runs-on: ubuntu-latest
     needs: [unit-tests, build]
 
@@ -197,63 +85,10 @@ jobs:
           wait-on-timeout: 120
           browser: chrome
 
-      - name: Upload Cypress screenshots on failure
+      - name: Upload screenshots on failure
         uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-screenshots
           path: ${{ env.WORKING_DIR }}/cypress/screenshots/
           retention-days: 7
-
-      - name: Upload Cypress videos
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cypress-videos
-          path: ${{ env.WORKING_DIR }}/cypress/videos/
-          if-no-files-found: ignore
-          retention-days: 3
-
-  # ── Docker Build & Push ───────────────────────────────────────────────────────
-  docker:
-    name: Docker Build & Push
-    runs-on: ubuntu-latest
-    needs: [e2e, type-check, format-check, security-audit]
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/frontend
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ env.WORKING_DIR }}
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

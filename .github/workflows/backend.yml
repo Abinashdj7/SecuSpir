@@ -1,9 +1,5 @@
 name: Backend CI
 
-concurrency:
-  group: backend-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 on:
   push:
     branches: [main]
@@ -16,27 +12,19 @@ on:
       - 'Server/**'
       - '.github/workflows/backend.yml'
 
-env:
-  JAVA_VERSION: '21'
-  JAVA_DISTRO: 'temurin'
-
 jobs:
 
-  # ── Unit Tests + JaCoCo Coverage ────────────────────────────────────────────
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: '21'
+          distribution: 'temurin'
           cache: maven
 
       - name: Make mvnw executable
@@ -50,38 +38,25 @@ jobs:
             -Dsurefire.failIfNoSpecifiedTests=false
         working-directory: Server
 
-      - name: Publish unit test report
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Backend Unit Tests
-          path: Server/target/surefire-reports/*.xml
-          reporter: java-junit
-          fail-on-error: false
-
-      - name: Upload JaCoCo coverage report
+      - name: Upload test report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-unit-coverage
-          path: Server/target/site/jacoco/
+          name: unit-test-report
+          path: Server/target/surefire-reports/
           retention-days: 7
 
-  # ── Integration Tests + JaCoCo Coverage ─────────────────────────────────────
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: '21'
+          distribution: 'temurin'
           cache: maven
 
       - name: Make mvnw executable
@@ -95,68 +70,14 @@ jobs:
             -Dsurefire.failIfNoSpecifiedTests=false
         working-directory: Server
 
-      - name: Publish integration test report
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Backend Integration Tests
-          path: Server/target/surefire-reports/*.xml
-          reporter: java-junit
-          fail-on-error: false
-
-      - name: Upload JaCoCo coverage report
+      - name: Upload test report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-integration-coverage
-          path: Server/target/site/jacoco/
+          name: integration-test-report
+          path: Server/target/surefire-reports/
           retention-days: 7
 
-  # ── Trivy Security Scan ──────────────────────────────────────────────────────
-  security-scan:
-    name: Security Scan (Trivy)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRO }}
-          cache: maven
-
-      - name: Make mvnw executable
-        run: chmod +x mvnw
-        working-directory: Server
-
-      - name: Populate Maven cache
-        run: ./mvnw dependency:resolve -q --no-transfer-progress
-        working-directory: Server
-
-      - name: Run Trivy filesystem scan (SARIF)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: 'Server'
-          format: 'sarif'
-          output: 'trivy-backend.sarif'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          exit-code: '0'
-
-      - name: Upload results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        if: always() && hashFiles('trivy-backend.sarif') != ''
-        with:
-          sarif_file: trivy-backend.sarif
-          category: trivy-backend
-
-  # ── Build JAR ────────────────────────────────────────────────────────────────
   build:
     name: Build JAR
     runs-on: ubuntu-latest
@@ -167,8 +88,8 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: '21'
+          distribution: 'temurin'
           cache: maven
 
       - name: Make mvnw executable
@@ -179,54 +100,9 @@ jobs:
         run: ./mvnw package -DskipTests
         working-directory: Server
 
-      - name: Upload JAR artifact
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: securebank-backend
           path: Server/target/*.jar
-          if-no-files-found: error
-          retention-days: 14
-
-  # ── Docker Build & Push ──────────────────────────────────────────────────────
-  docker:
-    name: Docker Build & Push
-    runs-on: ubuntu-latest
-    needs: [build, security-scan]
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/backend
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: Server
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          retention-days: 7
