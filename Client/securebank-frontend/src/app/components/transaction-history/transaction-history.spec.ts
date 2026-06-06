@@ -1,17 +1,25 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
-import { TransactionHistory } from './transaction-history';
+import { TransactionHistoryComponent } from './transaction-history.component';
 
-describe('TransactionHistory', () => {
-  let component: TransactionHistory;
-  let fixture: ComponentFixture<TransactionHistory>;
+describe('TransactionHistoryComponent', () => {
+  let component: TransactionHistoryComponent;
+  let fixture: ComponentFixture<TransactionHistoryComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TransactionHistory],
+      imports: [TransactionHistoryComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(TransactionHistory);
+    fixture = TestBed.createComponent(TransactionHistoryComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });
