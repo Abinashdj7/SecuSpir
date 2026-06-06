@@ -7,6 +7,10 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:coverage": "ng test --coverage",
+    "type-check": "tsc -p tsconfig.app.json --noEmit",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css}\"",
+    "format:write": "prettier --write \"src/**/*.{ts,html,css}\"",
     "cy:open": "cypress open",
     "cy:run": "cypress run",
     "e2e": "start-server-and-test start http://localhost:4200 cy:run"
@@ -31,6 +35,7 @@
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/vite": "^4.2.2",
+    "@vitest/coverage-v8": "^4.1.8",
     "autoprefixer": "^10.5.0",
     "cypress": "^15.16.0",
     "jsdom": "^28.0.0",
