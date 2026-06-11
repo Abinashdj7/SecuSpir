@@ -151,40 +151,35 @@ npm test
 
 ## 🧪 Testing
 
-The backend includes comprehensive unit and integration tests across controllers, services, and security components.
+The project has unit, integration, and end-to-end test coverage on both backend and frontend, all wired into CI.
 
-### ✅ Test Summary
+### Backend (JUnit 5 + Mockito + H2)
 
-* **Total Tests:** 35
-* **Failures:** 0
-* **Errors:** 0
-* **Skipped:** 1
-* **Build Status:** ✅ SUCCESS
-
-### 📦 Test Coverage Areas
-
-* **Controller Layer**
-
-  * `TransactionControllerTest`
-
-* **Service Layer**
-
-  * `AccountServiceTest`
-  * `AuthServiceTest`
-  * `TransactionServiceTest`
-
-* **Security**
-
-  * `JwtUtilTest`
-
-* **Application Context**
-
-  * `SecurebankApplicationTests` (basic context load)
-
-### ▶️ Run Tests
+* **Unit / slice tests** — `AccountControllerTest`, `AuthControllerTest`, `TransactionControllerTest`, `AccountServiceTest`, `AuthServiceTest`, `TransactionServiceTest`, `JwtUtilTest`
+* **Integration tests** (`@SpringBootTest` + H2 in-memory DB) — `AuthIntegrationTest`, `AccountIntegrationTest`, `TransactionIntegrationTest`, `SecurebankApplicationTests`
 
 ```bash
+# Unit tests only
+./mvnw test -Dtest="!*IntegrationTest,!SecurebankApplicationTests"
+
+# Integration tests only
+./mvnw test -Dtest="*IntegrationTest,SecurebankApplicationTests"
+
+# Everything
 ./mvnw test
+```
+
+### Frontend (Vitest + Cypress)
+
+* **Unit tests** — services, guards, interceptors, and components (`auth`, `account`, `transaction`, `transfer`, `transaction-history`)
+* **E2E tests** (`cypress/e2e/`) — `auth.cy.ts`, `dashboard.cy.ts`, `transfer.cy.ts`, `transactions.cy.ts`
+
+```bash
+# Unit tests
+npm test
+
+# E2E tests (starts the dev server automatically)
+npm run e2e
 ```
 
 ---
@@ -251,28 +246,23 @@ Two path-filtered workflows run on every push or pull request to `main`.
 
 ### Backend CI ([`.github/workflows/backend.yml`](.github/workflows/backend.yml))
 
-Triggers when files under `Server/` change.
+Triggers when files under `Server/` change. Three jobs run in sequence:
 
-| Step | Detail |
-|------|--------|
-| Checkout | `actions/checkout@v4` |
-| Java setup | Java 21 (Temurin) with Maven cache |
-| Fix permissions | `chmod +x mvnw` |
-| Unit tests | `./mvnw test` |
-| Build JAR | `./mvnw package -DskipTests` |
-| Upload artifact | `securebank-backend` (7-day retention) |
+| Job | Detail |
+|-----|--------|
+| Unit Tests | Java 21 (Temurin) + Maven cache → `./mvnw test` excluding `*IntegrationTest`/`SecurebankApplicationTests`; uploads `unit-test-report` |
+| Integration Tests | `./mvnw test` for `*IntegrationTest` + `SecurebankApplicationTests` (H2 in-memory DB); uploads `integration-test-report` |
+| Build JAR | Runs after both test jobs pass → `./mvnw package -DskipTests`; uploads `securebank-backend` (7-day retention) |
 
 ### Frontend CI ([`.github/workflows/frontend.yml`](.github/workflows/frontend.yml))
 
-Triggers when files under `Client/` change.
+Triggers when files under `Client/` change. Three jobs run in sequence:
 
-| Step | Detail |
-|------|--------|
-| Checkout | `actions/checkout@v4` |
-| Node.js setup | Node 20 with npm cache |
-| Install deps | `npm ci` |
-| Build | `npm run build` |
-| Upload artifact | `securebank-frontend` (7-day retention) |
+| Job | Detail |
+|-----|--------|
+| Unit Tests | Node 20 + npm cache → `npm test` (Vitest) |
+| Build | `npm run build` (Angular); uploads `securebank-frontend` dist (7-day retention) |
+| E2E Tests | Runs after Unit Tests + Build pass → Cypress against `npm start`; uploads screenshots on failure |
 
 > Neither workflow includes deployment steps — they stop at build/test.
 
