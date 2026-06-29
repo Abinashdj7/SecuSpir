@@ -146,13 +146,24 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.12</version>
+				<version>0.8.13</version>
 				<executions>
 					<execution>
 						<id>prepare-agent</id>
 						<goals>
 							<goal>prepare-agent</goal>
 						</goals>
+						<!-- Exclude third-party and framework classes so the agent
+						     does not attempt to instrument bytecode compiled for a
+						     newer class-file version than JaCoCo supports. -->
+						<configuration>
+							<excludes>
+								<exclude>org/springframework/**</exclude>
+								<exclude>org/hibernate/**</exclude>
+								<exclude>com/zaxxer/**</exclude>
+								<exclude>com/mysql/**</exclude>
+							</excludes>
+						</configuration>
 					</execution>
 					<execution>
 						<id>report</id>

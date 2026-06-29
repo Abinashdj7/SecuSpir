@@ -2,49 +2,152 @@ version: '3.8'
 
 services:
 
-  mysql:
+  # ── MySQL Primary ─────────────────────────────────────────────────────────
+  mysql-primary:
     image: mysql:8.0
-    container_name: securebank-mysql
+    container_name: securebank-mysql-primary
+    command: >
+      --server-id=1
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --binlog-do-db=securebank
+      --gtid-mode=ON
+      --enforce-gtid-consistency=ON
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: securebank
     ports:
-      - "3307:3306"
+      - "3310:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_primary_data:/var/lib/mysql
+      - ./docker/mysql-primary/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
 
+  # ── MySQL Replica ─────────────────────────────────────────────────────────
+  mysql-replica:
+    image: mysql:8.0
+    container_name: securebank-mysql-replica
+    command: >
+      --server-id=2
+      --relay-log=relay-bin
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --gtid-mode=ON
+      --enforce-gtid-consistency=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: securebank
+    ports:
+      - "3311:3306"
+    volumes:
+      - mysql_replica_data:/var/lib/mysql
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-P", "3306", "-prootpassword"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  # ── Replication Setup (one-shot) ──────────────────────────────────────────
+  # Runs after both MySQL nodes are healthy, creates the replication user on
+  # primary and points the replica at it using GTID-based replication.
+  mysql-replication-setup:
+    image: mysql:8.0
+    container_name: securebank-replication-setup
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+      mysql-replica:
+        condition: service_healthy
+    environment:
+      MYSQL_PWD: rootpassword
+    command: >
+      bash -c "
+        echo 'Waiting for primary to accept TCP connections...'
+        until mysql -h mysql-primary -u root -prootpassword -e 'SELECT 1' > /dev/null 2>&1; do
+          echo '  primary not ready yet, retrying in 2s...'
+          sleep 2
+        done
+
+        echo 'Creating replication user on primary...'
+        mysql -h mysql-primary -u root -prootpassword -e \"
+          CREATE USER IF NOT EXISTS 'replicator'@'%' IDENTIFIED BY 'replicatorpassword';
+          GRANT REPLICATION SLAVE ON *.* TO 'replicator'@'%';
+          FLUSH PRIVILEGES;
+        \"
+
+        echo 'Waiting for replica to accept TCP connections...'
+        until mysql -h mysql-replica -u root -prootpassword -e 'SELECT 1' > /dev/null 2>&1; do
+          echo '  replica not ready yet, retrying in 2s...'
+          sleep 2
+        done
+
+        echo 'Configuring replica to follow primary (GTID mode)...'
+        mysql -h mysql-replica -u root -prootpassword -e \"
+          CHANGE REPLICATION SOURCE TO
+            SOURCE_HOST='mysql-primary',
+            SOURCE_PORT=3306,
+            SOURCE_USER='replicator',
+            SOURCE_PASSWORD='replicatorpassword',
+            SOURCE_AUTO_POSITION=1,
+            GET_SOURCE_PUBLIC_KEY=1;
+          START REPLICA;
+        \"
+
+        echo 'Waiting for replica to catch up...'
+        sleep 3
+
+        echo 'Replica status:'
+        mysql -h mysql-replica -u root -prootpassword -e 'SHOW REPLICA STATUS\\G' 2>&1 | grep -E 'Replica_IO_Running|Replica_SQL_Running|Seconds_Behind_Source'
+
+        echo 'Replication setup complete.'
+      "
+    restart: "no"
+
+  # ── Spring Boot Backend ───────────────────────────────────────────────────
   backend:
     build:
       context: ./Server
       dockerfile: Dockerfile
     container_name: securebank-server
     ports:
-      - "8080:8080"
+      - "8085:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/securebank
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: rootpassword
+      SPRING_DATASOURCE_PRIMARY_URL: jdbc:mysql://mysql-primary:3306/securebank
+      SPRING_DATASOURCE_PRIMARY_USERNAME: root
+      SPRING_DATASOURCE_PRIMARY_PASSWORD: rootpassword
+      SPRING_DATASOURCE_REPLICA_URL: jdbc:mysql://mysql-replica:3306/securebank
+      SPRING_DATASOURCE_REPLICA_USERNAME: root
+      SPRING_DATASOURCE_REPLICA_PASSWORD: rootpassword
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: 86400000
-      CORS_ALLOWED_ORIGINS: http://localhost:4201
+      CORS_ALLOWED_ORIGINS: http://localhost:4202
     depends_on:
-      mysql:
+      mysql-primary:
+        condition: service_healthy
+      mysql-replica:
         condition: service_healthy
 
+  # ── Angular Frontend ──────────────────────────────────────────────────────
   frontend:
     build:
       context: ./Client/securebank-frontend
       dockerfile: Dockerfile
     container_name: securebank-frontend
     ports:
-      - "4201:80"
+      - "4202:80"
     depends_on:
       - backend
 
 volumes:
-  mysql_data:
+  mysql_primary_data:
+  mysql_replica_data:

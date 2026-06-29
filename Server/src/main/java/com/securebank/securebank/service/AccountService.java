@@ -8,6 +8,7 @@ import com.securebank.securebank.repo.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final CurrentUserService currentUserService;
 
+    @Transactional(readOnly = true)
     public List<AccountResponse> getMyAccounts() {
         User user = currentUserService.getCurrentUser();
         return accountRepository.findByUserId(user.getId())
@@ -30,6 +32,7 @@ public class AccountService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public AccountResponse getAccountById(Long accountId) {
         return AccountResponse.fromEntity(getOwnedAccountById(accountId));
     }
